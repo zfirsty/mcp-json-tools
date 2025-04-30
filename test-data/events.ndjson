@@ -1,0 +1,5 @@
+{"event": "login", "user": "alice", "timestamp": "2024-07-30T10:00:00Z", "success": true}
+{"event": "view_item", "user": "bob", "item_id": "book101", "timestamp": "2024-07-30T10:05:15Z"}
+{"event": "login", "user": "alice", "timestamp": "2024-07-30T10:08:00Z", "success": false, "reason": "wrong_password"}
+{"event": "add_to_cart", "user": "charlie", "item_id": "toolA", "quantity": 1, "timestamp": "2024-07-30T10:12:45Z"}
+{"event": "view_item", "user": "alice", "item_id": "gadget7", "timestamp": "2024-07-30T10:15:30Z"} 

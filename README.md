@@ -7,10 +7,12 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 
 ## Key Features
 
-*   **Query**: Select data using standard JSONPath expressions.
-*   **Inspect**: Retrieve both values and their precise paths within the JSON structure.
-*   **Analyze & Modify with Lodash (⚠️)**: Execute JavaScript code with full **[`lodash`](https://lodash.com/docs/)** (`_`) and `jsonpath` (`jp`) access for complex data transformation, analysis (filtering, mapping, sorting, aggregation, etc.), or **in-place file modification**.
-*   **Simple Setup**: Runs as a standard Node.js process.
+*   **Query**: Select data using standard JSONPath expressions (`mcp_json_query`).
+*   **Inspect**: Retrieve both values and their precise paths within the JSON structure (`mcp_json_nodes`).
+*   **Analyze & Modify JSON**: Execute JavaScript within a sandboxed VM (with Lodash `_` and JSONPath `jp`) for complex analysis or modification of standard JSON files (`mcp_json_eval`, `mcp_json_multi_eval`).
+*   **Support NDJSON**: Read, analyze, and modify (with access to Lodash `_` and JSONPath `jp`) newline-delimited ndjson/jsonl files using the `mcp_ndjson_eval` tool. Suitable for processing file formats like [`server-memory MCP`](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) data.
+*   **Safe Execution**: Uses Node.js `vm` module for safer code execution in `eval` tools, with configurable timeouts.
+*   **Simple Setup**: Runs as a standard Node.js process via `npx`.
 
 ## Tools Provided
 
@@ -42,7 +44,7 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 
 ### 3. `mcp_json_eval`
 
-*   **Action**: Executes JavaScript code with access to JSON data (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). **Primary purpose**: Return the result of the code's final expression (for analysis/calculation) OR trigger a file write if the result is a specific update instruction. **Can modify the source file.**
+*   **Action**: Executes JavaScript code within a sandboxed VM with JSON content (`$1`), lodash (`_`), and jsonpath (`jp`). Returns the result OR modifies the file if the code's last expression is `{ type: 'updateFile', data: <new_json_object> }`. Has a 30s timeout.
 *   **Parameters**:
     *   `file_path` (string): Path to the JSON file.
     *   `js_code` (string): JavaScript code to execute.
@@ -50,7 +52,7 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 *   **Returns**: 
     *   If the last expression IS NOT the update instruction: The direct result of the `js_code` execution (stringified if object/array, otherwise the primitive value).
     *   If the last expression IS the update instruction: A success message upon successful file write (e.g., `"Successfully updated ..."`).
-*   **⚠️ SECURITY WARNING ⚠️**: Executes unsandboxed code (`eval()`) with full Node.js permissions. **Use with extreme caution and only with trusted code.**
+*   **⚠️ SECURITY WARNING ⚠️**: Executes user-provided code within a sandboxed VM. While safer than raw `eval()`, review code for potential resource exhaustion or unintended logic. Use with trusted code.
 *   **Example: Add 'onSale' property (Modifying)**
     *   *Goal*: Add `onSale: false` to every book.
     *   *JavaScript Logic*:
@@ -76,15 +78,56 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 
 ### 4. `mcp_json_multi_eval`
 
-*   **Action**: Similar to `mcp_json_eval`, but operates on an array of JSON objects (`$1`) loaded from multiple files. **Primary purpose**: Return the result of the code's final expression OR trigger file writes based on a specific update instruction.
+*   **Action**: Executes JS code within a sandboxed VM with multiple JSON files ($1 is array), lodash (`_`), and jsonpath (`jp`). Returns the result OR modifies files if the code's last expression is `{ type: 'updateMultipleFiles', updates: [...] }`. Has a 30s timeout.
 *   **Parameters**:
     *   `file_paths` (array of strings): Paths to the JSON files.
     *   `js_code` (string): JavaScript code to execute.
-*   **File Modification**: To trigger file writes, the *last expression* evaluated in `js_code` **must** be `({ type: 'updateMultipleFiles', updates: [{ index: 0, data: <newData> }, ...] })`. Only files corresponding to valid indices in the input `file_paths` can be updated.
+*   **File Modification**: To trigger file writes, the *last expression* evaluated in `js_code` **must** be `({ type: 'updateMultipleFiles', updates: [{ index: <file_index>, data: <newData> }, ...] })`. Only files corresponding to valid indices in the input `file_paths` can be updated.
 *   **Returns**: 
     *   If the last expression IS NOT the multi-update instruction: The direct result of the `js_code` execution (stringified if object/array, otherwise the primitive value).
     *   If the last expression IS the multi-update instruction: A success message listing updated files (e.g., `"Successfully updated files: ..."`).
-*   **⚠️ SECURITY WARNING ⚠️**: Same security considerations as `mcp_json_eval` apply.
+*   **⚠️ SECURITY WARNING ⚠️**: Executes user-provided code within a sandboxed VM. Same security considerations as `mcp_json_eval` apply.
+
+### 5. `mcp_ndjson_eval`
+
+*   **Action**: Reads an ndjson (Newline Delimited JSON) file line by line, processes the resulting array ($1) using JS code within a sandboxed VM (with Lodash _, jsonpath jp). Returns the result, OR writes back as ndjson if the code returns `{type: 'updateFile', data: <newArray>}`. Has a 30s timeout.
+*   **Parameters**:
+    *   `file_path` (string): The **absolute path** to the ndjson file.
+    *   `js_code` (string): The JavaScript code to execute. Receives the array of parsed objects as `$1`, Lodash as `_`, and jsonpath as `jp`.
+*   **File Modification**: To trigger a file write, the *last expression* evaluated in `js_code` **must** be `({ type: 'updateFile', data: <newArray> })`. The `<newArray>` MUST contain valid JSON objects.
+*   **Returns**: 
+    *   If the last expression IS NOT the update instruction: The direct result of the `js_code` execution (stringified if object/array, otherwise the primitive value).
+    *   If the last expression IS the update instruction: A success message upon successful file write (e.g., `"Successfully updated ... lines written ..."`).
+*   **⚠️ SECURITY WARNING ⚠️**: Executes user-provided code within a sandboxed VM. Use with extreme caution and only with trusted code.
+*   **Example: mcp_json_query Equivalent (Get event types for a user)**
+    *   *Goal*: Get event types for all events generated by user "alice" from `test-data/events.ndjson`.
+    *   *JavaScript Logic*:
+        ```javascript
+        // Use jsonpath to query the array ($1) directly
+        jp.query($1, "$[*][?(@.user=='alice')].event");
+        ```
+    *   *Tool Invocation*: Call `mcp_ndjson_eval` with `file_path="{abspath}/mcp-json-tools/test-data/events.ndjson"` and the JS logic.
+    *   *Expected Output*: `["login", "login", "view_item"]` (as a string)
+*   **Example: mcp_json_nodes Equivalent (Get full event object for a user)**
+    *   *Goal*: Get the full event object (including path) for user "bob".
+    *   *JavaScript Logic*:
+        ```javascript
+        // Use jsonpath nodes function to get objects with paths
+        jp.nodes($1, "$[*][?(@.user=='bob')]"); 
+        ```
+    *   *Tool Invocation*: Call `mcp_ndjson_eval` with `file_path="{abspath}/mcp-json-tools/test-data/events.ndjson"` and the JS logic.
+    *   *Expected Output*: Stringified JSON array containing the node object `{path: ..., value: ...}` for bob's event.
+*   **Example: Modify (Filter out failed events and Write Back)**
+    *   *Goal*: Remove events where `success` is `false` from `test-data/events.ndjson` and update the file.
+    *   *JavaScript Logic*:
+        ```javascript
+        // Filter out events where success is not true (or success field missing)
+        // and return the update object
+        const filteredData = _.filter($1, item => item.success === true);
+        ({ type: 'updateFile', data: filteredData }); 
+        ```
+    *   *Tool Invocation*: Call `mcp_ndjson_eval` with `file_path="{abspath}/mcp-json-tools/test-data/events.ndjson"` and the JS logic.
+    *   *Expected Output*: `"Successfully updated {abspath}/mcp-json-tools/test-data/events.ndjson. Processed 5 lines, wrote 4 lines."` (Assuming initial 5 lines)
 
 ## Configuration
 

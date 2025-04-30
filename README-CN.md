@@ -5,10 +5,12 @@
 
 ## 主要特性
 
-*   **查询 (Query)**: 使用标准的 JSONPath 表达式选择数据。
-*   **检查 (Inspect)**: 检索值及其在 JSON 结构中的精确路径。
-*   **分析与修改 (使用 Lodash, ⚠️)**: 执行 JavaScript 代码，完全访问 **[`lodash`](https://lodash.com/docs/)** (`_`) 和 `jsonpath` (`jp`)，用于复杂的数据转换、分析（过滤、映射、排序、聚合等）或**本地文件修改**。
-*   **简易设置**: 作为标准的 Node.js 进程运行。
+*   **查询 (Query)**: 使用标准的 JSONPath 表达式选择数据 (`mcp_json_query`)。
+*   **检查 (Inspect)**: 检索值及其在 JSON 结构中的精确路径 (`mcp_json_nodes`)。
+*   **分析与修改 JSON**: 在沙箱化 VM 中执行 JavaScript（可访问 Lodash `_` 和 JSONPath `jp`），对标准 JSON 文件进行复杂分析或修改 (`mcp_json_eval`, `mcp_json_multi_eval`)。
+*   **支持 NDJSON**: 使用 `mcp_ndjson_eval` 工具读取、分析、修改（可访问 Lodash `_` 和 JSONPath `jp`）换行符分隔的 ndjson/jsonl 文件。适用于处理类似 [`server-memory MCP`](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) 数据格式的文件。
+*   **安全执行**: 在 `eval` 相关工具中使用 Node.js `vm` 模块执行代码，更安全，并带有可配置的超时。
+*   **简易设置**: 通过 `npx` 作为标准的 Node.js 进程运行。
 
 ## 提供的工具
 
@@ -40,7 +42,7 @@
 
 ### 3. `mcp_json_eval`
 
-*   **功能**: 执行 JavaScript 代码，可访问 JSON 数据 (`$1`)、**Lodash** (`_`) 和 `jsonpath` (`jp`)。**主要目的**：返回代码最终表达式的结果（用于分析/计算），或者如果结果是特定的更新指令，则触发文件写入。**可以修改源文件。**
+*   **功能**: 在沙箱化的 VM 中执行 JavaScript 代码，可访问 JSON 内容 (`$1`)、lodash (`_`) 和 jsonpath (`jp`)。返回结果，或者如果代码的最后表达式是 `{ type: 'updateFile', data: <新JSON对象> }`，则修改文件。有 30 秒超时。**⚠️ 警告：执行用户提供的代码。**
 *   **参数**:
     *   `file_path` (字符串): JSON 文件的路径。
     *   `js_code` (字符串): 要执行的 JavaScript 代码。
@@ -48,7 +50,7 @@
 *   **返回**:
     *   如果最后表达式 **不是** 更新指令：`js_code` 执行的直接结果（如果结果是对象/数组则进行字符串化，否则为原始值）。
     *   如果最后表达式 **是** 更新指令：文件成功写入后的成功消息（例如 `"Successfully updated ..."`）。
-*   **⚠️ 安全警告 ⚠️**: 执行未沙箱化的代码 (`eval()`)，拥有完整的 Node.js 权限。**请极其谨慎使用，且仅用于可信代码。**
+*   **⚠️ 安全警告 ⚠️**: 在沙箱化的 VM 中执行用户提供的代码。虽然比原始 `eval()` 更安全，但仍需审查代码以防潜在的资源耗尽或意外逻辑。请仅用于可信代码。
 *   **示例：添加 'onSale' 属性 (修改操作)**
     *   *目标*: 为每本书添加 `onSale: false` 属性。
     *   *JavaScript 逻辑*:
@@ -74,15 +76,56 @@
 
 ### 4. `mcp_json_multi_eval`
 
-*   **功能**: 与 `mcp_json_eval` 类似，但操作于从多个文件加载的 JSON 对象数组 (`$1`)。**主要目的**：返回代码最终表达式的结果，或者根据特定的更新指令触发文件写入。
+*   **功能**: 在沙箱化的 VM 中执行 JS 代码，可访问多个 JSON 文件 ($1 是数组)、lodash (`_`) 和 jsonpath (`jp`)。返回结果，或者如果代码的最后表达式是 `{ type: 'updateMultipleFiles', updates: [...] }`，则修改文件。有 30 秒超时。**⚠️ 警告：执行用户提供的代码。**
 *   **参数**:
     *   `file_paths` (字符串数组): JSON 文件的路径数组。
     *   `js_code` (字符串): 要执行的 JavaScript 代码。
-*   **文件修改**: 若要触发文件写入，`js_code` 中求值的*最后表达式* **必须** 是 `({ type: 'updateMultipleFiles', updates: [{ index: 0, data: <newData> }, ...] })`。只有对应于输入 `file_paths` 中有效索引的文件才能被更新。
+*   **文件修改**: 若要触发文件写入，`js_code` 中求值的*最后表达式* **必须** 是 `({ type: 'updateMultipleFiles', updates: [{ index: <文件索引>, data: <新数据> }, ...] })`。只有对应于输入 `file_paths` 中有效索引的文件才能被更新。
 *   **返回**:
     *   如果最后表达式 **不是** 多文件更新指令：`js_code` 执行的直接结果（如果结果是对象/数组则进行字符串化，否则为原始值）。
     *   如果最后表达式 **是** 多文件更新指令：列出已更新文件的成功消息（例如 `"Successfully updated files: ..."`）。
-*   **⚠️ 安全警告 ⚠️**: 与 `mcp_json_eval` 具有相同的安全注意事项。
+*   **⚠️ 安全警告 ⚠️**: 在沙箱化的 VM 中执行用户提供的代码。与 `mcp_json_eval` 具有相同的安全注意事项。
+
+### 5. `mcp_ndjson_eval` 
+
+*   **功能**: 逐行读取 ndjson (换行符分隔的 JSON) 文件，在沙箱化的 VM 中使用 JS 代码（可访问 Lodash `_` 和 jsonpath `jp`）处理生成的对象数组 ($1)。返回结果，或者如果代码返回 `{type: 'updateFile', data: <新数组>}`，则将结果写回为 ndjson 格式。有 30 秒超时。**⚠️ 警告：执行用户提供的代码。**
+*   **参数**:
+    *   `file_path` (字符串): ndjson 文件的**绝对路径**。
+    *   `js_code` (字符串): 要执行的 JavaScript 代码。接收解析后的对象数组 `$1`、Lodash `_` 和 jsonpath `jp`。
+*   **文件修改**: 若要触发文件写入，`js_code` 中求值的*最后表达式* **必须** 是 `({ type: 'updateFile', data: <新数组> })`。该 `<新数组>` 必须包含有效的 JSON 对象。
+*   **返回**: 
+    *   如果最后表达式 **不是** 更新指令：`js_code` 执行的直接结果（如果结果是对象/数组则进行字符串化，否则为原始值）。
+    *   如果最后表达式 **是** 更新指令：文件成功写入后的成功消息（例如 `"Successfully updated ... lines written ..."`）。
+*   **⚠️ 安全警告 ⚠️**: 在沙箱化的 VM 中执行用户提供的代码。请极其谨慎使用，且仅用于可信代码。
+*   **示例：等价mcp_json_query (获取用户的事件类型)**
+    *   *目标*: 从 `test-data/events.ndjson` 获取用户 "alice" 生成的所有事件的类型。
+    *   *JavaScript 逻辑*:
+        ```javascript
+        // 直接使用 jsonpath 查询数组 ($1)
+        jp.query($1, "$[*][?(@.user=='alice')].event");
+        ```
+    *   *工具调用*: 调用 `mcp_ndjson_eval`，设置 `file_path="{绝对路径}/mcp-json-tools/test-data/events.ndjson"` 和上述 JS 逻辑。
+    *   *预期输出*: `["login", "login", "view_item"]` (字符串形式)
+*   **示例：等价mcp_json_nodes (获取用户的完整事件对象)**
+    *   *目标*: 获取用户 "bob" 的完整事件对象（包含路径）。
+    *   *JavaScript 逻辑*:
+        ```javascript
+        // 使用 jsonpath 的 nodes 函数获取带路径的对象
+        jp.nodes($1, "$[*][?(@.user=='bob')]"); 
+        ```
+    *   *工具调用*: 调用 `mcp_ndjson_eval`，设置 `file_path="{绝对路径}/mcp-json-tools/test-data/events.ndjson"` 和上述 JS 逻辑。
+    *   *预期输出*: 包含 bob 事件的节点对象 `{path: ..., value: ...}` 的 JSON 数组的字符串化形式。
+*   **示例：修改 (过滤失败事件并写回)**
+    *   *目标*: 从 `test-data/events.ndjson` 移除 `success` 为 `false` 的事件并更新文件。
+    *   *JavaScript 逻辑*:
+        ```javascript
+        // 过滤掉 success 不为 true 的事件 (或缺少 success 字段)
+        // 并返回更新对象
+        const filteredData = _.filter($1, item => item.success === true);
+        ({ type: 'updateFile', data: filteredData }); 
+        ```
+    *   *工具调用*: 调用 `mcp_ndjson_eval`，设置 `file_path="{绝对路径}/mcp-json-tools/test-data/events.ndjson"` 和上述 JS 逻辑。
+    *   *预期输出*: `"Successfully updated {绝对路径}/mcp-json-tools/test-data/events.ndjson. Processed 5 lines, wrote 4 lines."` (假设初始有 5 行)
 
 ## 配置
 

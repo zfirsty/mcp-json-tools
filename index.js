@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import jp from 'jsonpath';
 import _ from 'lodash';
+import vm from 'vm'; // Import the vm module
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -41,6 +42,51 @@ async function writeJsonFile(filePath, data) {
   }
 }
 
+// Utility function to read ndjson files
+async function readNdjsonFile(filePath) {
+  const objects = [];
+  let lineNumber = 0;
+  try {
+    const absolutePath = path.resolve(filePath);
+    const fileContent = await fs.readFile(absolutePath, 'utf8');
+    const lines = fileContent.split('\n');
+
+    for (const line of lines) {
+      lineNumber++;
+      if (line.trim() === '') continue; // Skip empty lines
+      try {
+        const jsonObj = JSON.parse(line);
+        objects.push(jsonObj);
+      } catch (parseError) {
+        // Log warning for invalid JSON lines but continue processing
+        console.warn(`Skipping invalid JSON on line ${lineNumber} in ${filePath}: ${parseError.message}`);
+      }
+    }
+    return objects;
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new Error(`File not found: ${filePath}`);
+    } else {
+      throw new Error(`Error reading ndjson file ${filePath}: ${error.message}`);
+    }
+  }
+}
+
+// Utility function to write arrays as ndjson files
+async function writeNdjsonFile(filePath, dataArray) {
+  if (!Array.isArray(dataArray)) {
+    throw new Error('Invalid data: Input must be an array to write as ndjson.');
+  }
+  try {
+    const absolutePath = path.resolve(filePath);
+    // Convert each object to a JSON string and join with newlines
+    const ndjsonString = dataArray.map(obj => JSON.stringify(obj)).join('\n');
+    await fs.writeFile(absolutePath, ndjsonString, 'utf8');
+  } catch (error) {
+    throw new Error(`Error writing ndjson file ${filePath}: ${error.message}`);
+  }
+}
+
 // --- Core Tool Logic (Implementations) ---
 
 async function queryImplementation({ file_path, json_path, count }) {
@@ -64,30 +110,35 @@ async function evalImplementation({ file_path, js_code }) {
   }
 
   try {
-    // Make JSON object available in the eval scope
-    const $1 = jsonObj;
+    // Create the context for the VM
+    const context = {
+      $1: jsonObj,
+      _: _,
+      jp: jp, 
+      // Explicitly prevent access to potentially harmful globals/modules
+      console: undefined,
+      process: undefined,
+      require: undefined,
+      fs: undefined,
+      path: undefined,
+      vm: undefined,
+      setTimeout: undefined,
+      setInterval: undefined,
+      setImmediate: undefined,
+      queueMicrotask: undefined,
+      fetch: undefined,
+      Buffer: undefined,
+      WebAssembly: undefined,
+      global: undefined,
+      globalThis: undefined
+    };
 
-    // Shadow potentially dangerous built-ins and imports within eval's scope
-    const fs = undefined;
-    const path = undefined;
-    const McpServer = undefined;
-    const StdioServerTransport = undefined;
-    const process = undefined; // Critical: Prevent access to process object
-    const setTimeout = undefined;
-    const setInterval = undefined;
-    const setImmediate = undefined;
-    const queueMicrotask = undefined;
-    const fetch = undefined; // Prevent network access (Node 18+)
-    const Buffer = undefined;
-    const WebAssembly = undefined;
-    const require = undefined; // Though likely unavailable in ESM, shadow for safety
-    const global = undefined; // Shadow global namespaces
-    const globalThis = undefined;
-    // z (zod) is not relevant/accessible within eval's primary use case
-    // _ (lodash) and jp (jsonpath) are intentionally provided
-
-    // !!! DANGER ZONE: Executing eval() !!!
-    const result = eval(js_code);
+    // Create a script object and run it in the sandboxed context
+    const script = new vm.Script(js_code);
+    const result = script.runInNewContext(context, {
+        timeout: 30000 // Add a timeout (e.g., 30 seconds) to prevent infinite loops
+    });
+ 
 
     if (result && typeof result === 'object' && result.type === 'updateFile' && typeof result.data === 'object' && result.data !== null) {
       await writeJsonFile(file_path, result.data);
@@ -116,30 +167,34 @@ async function multiEvalImplementation({ file_paths, js_code }) {
   }
 
   try {
-    // Make JSON objects array available in the eval scope
-    const $1 = jsonObjects;
+    // Create the context for the VM
+    const context = {
+      $1: jsonObjects,
+      _: _,
+      jp: jp, 
+      // Explicitly prevent access to potentially harmful globals/modules
+      console: undefined,
+      process: undefined,
+      require: undefined,
+      fs: undefined,
+      path: undefined,
+      vm: undefined,
+      setTimeout: undefined,
+      setInterval: undefined,
+      setImmediate: undefined,
+      queueMicrotask: undefined,
+      fetch: undefined,
+      Buffer: undefined,
+      WebAssembly: undefined,
+      global: undefined,
+      globalThis: undefined
+    };
 
-    // Shadow potentially dangerous built-ins and imports within eval's scope
-    const fs = undefined;
-    const path = undefined;
-    const McpServer = undefined;
-    const StdioServerTransport = undefined;
-    const process = undefined; // Critical: Prevent access to process object
-    const setTimeout = undefined;
-    const setInterval = undefined;
-    const setImmediate = undefined;
-    const queueMicrotask = undefined;
-    const fetch = undefined; // Prevent network access (Node 18+)
-    const Buffer = undefined;
-    const WebAssembly = undefined;
-    const require = undefined; // Though likely unavailable in ESM, shadow for safety
-    const global = undefined; // Shadow global namespaces
-    const globalThis = undefined;
-    // z (zod) is not relevant/accessible within eval's primary use case
-    // _ (lodash) and jp (jsonpath) are intentionally provided
-
-    // !!! DANGER ZONE: Executing eval() !!!
-    const result = eval(js_code);
+    // Create a script object and run it in the sandboxed context
+    const script = new vm.Script(js_code);
+    const result = script.runInNewContext(context, {
+        timeout: 30000 // Add a timeout (e.g., 30 seconds) to prevent infinite loops
+    });
 
     // Check for multi-file update request
     if (result && typeof result === 'object' && result.type === 'updateMultipleFiles' && Array.isArray(result.updates)) {
@@ -174,6 +229,67 @@ async function multiEvalImplementation({ file_paths, js_code }) {
     }
   } catch (evalError) {
     throw new Error(`Error executing provided JavaScript code: ${evalError.message}`);
+  }
+}
+
+// Core logic for the ndjson eval tool
+async function ndjsonEvalImplementation({ file_path, js_code }) {
+  let initialObjects = [];
+  try {
+    initialObjects = await readNdjsonFile(file_path);
+  } catch (readError) {
+    throw readError; 
+  }
+
+  try {
+    // Create the context for the VM
+    const context = {
+      $1: initialObjects,
+      _: _,
+      jp: jp,
+      // Explicitly prevent access to potentially harmful globals/modules
+      console: undefined,
+      process: undefined,
+      require: undefined,
+      fs: undefined,
+      path: undefined,
+      vm: undefined,
+      setTimeout: undefined,
+      setInterval: undefined,
+      setImmediate: undefined,
+      queueMicrotask: undefined,
+      fetch: undefined,
+      Buffer: undefined,
+      WebAssembly: undefined,
+      global: undefined,
+      globalThis: undefined
+    };
+
+    // Create a script object and run it in the sandboxed context
+    const script = new vm.Script(js_code);
+    const result = script.runInNewContext(context, {
+        timeout: 30000 // Add a timeout (e.g., 30 seconds) to prevent infinite loops
+    });
+
+    // --- Check for Update Instruction --- 
+    if (result && typeof result === 'object' && result.type === 'updateFile' && Array.isArray(result.data)) {
+      // Write the resulting array back to the file as ndjson
+      await writeNdjsonFile(file_path, result.data);
+      // Return success indicator object for the handler
+      return { 
+        success: true, 
+        file_path: file_path, 
+        lines_processed: initialObjects.length, 
+        lines_written: result.data.length 
+      };
+    } else {
+      // --- Return Direct Result (No File Write) --- 
+      return result; 
+    }
+
+  } catch (error) {
+    // Catch errors from vm execution (including timeout) or file operations
+    throw new Error(`Error during ndjson eval execution: ${error.message}`);
   }
 }
 
@@ -234,7 +350,7 @@ server.tool(
 
 server.tool(
   "mcp_json_eval",
-  "Executes JavaScript code with JSON content ($1), lodash (_), and jsonpath (jp). Returns the result OR modifies the file if the code's last expression is an update instruction ({ type: 'updateFile', data: ... }). **WARNING: Executes unsandboxed code.**",
+  "Executes JavaScript code within a sandboxed VM with JSON content ($1), lodash (_), and jsonpath (jp). Returns the result OR modifies the file if the code's last expression is { type: 'updateFile', data: <new_json_object> }. Has a 30s timeout. **WARNING: Executes user-provided code.**",
   {
     file_path: z.string().describe("The absolute path to the JSON file. Required due to potential working directory issues when running via npx."),
     js_code: z.string().describe("The JavaScript code to execute. To modify the file, the last evaluated expression must be `{ type: 'updateFile', data: <new_json_object> }`.")
@@ -269,7 +385,7 @@ server.tool(
 
 server.tool(
   "mcp_json_multi_eval",
-  "Executes JS code with multiple JSON files ($1 is array). Returns the result OR modifies files if the code's last expression is a multi-update instruction ({ type: 'updateMultipleFiles', updates: [...] }). **WARNING: Executes unsandboxed code.**",
+  "Executes JS code within a sandboxed VM with multiple JSON files ($1 is array), lodash (_), and jsonpath (jp). Returns the result OR modifies files if the code's last expression is { type: 'updateMultipleFiles', updates: [...] }. Has a 30s timeout. **WARNING: Executes user-provided code.**",
   {
     file_paths: z.array(z.string()).describe("Array of absolute paths to the JSON files. Required due to potential working directory issues when running via npx."),
     js_code: z.string().describe("The JavaScript code to execute. To modify files, the last evaluated expression must be `{ type: 'updateMultipleFiles', updates: [{ index: <file_index>, data: <newData> }, ...] }`.")
@@ -301,6 +417,44 @@ server.tool(
     } catch (error) {
       // Ensure the error message is propagated clearly
       throw new Error(`Multi-Eval Error: ${error.message}`);
+    }
+  }
+);
+
+// Register the ndjson eval tool
+server.tool(
+  "mcp_ndjson_eval",
+  "Reads an ndjson file line by line, processes the resulting array ($1) using JS code within a sandboxed VM (with Lodash _, jsonpath jp). Returns the result, OR writes back as ndjson if the code returns {type: 'updateFile', data: <newArray>}. Has a 30s timeout. Note: Can replicate mcp_json_query/nodes via jp.query/nodes(). **WARNING: Executes user-provided code.**",
+  {
+    file_path: z.string().describe("The absolute path to the ndjson file. Required due to potential working directory issues when running via npx."),
+    js_code: z.string().describe("The JavaScript code to execute. Receives the array ($1), Lodash (_), and jsonpath (jp). To modify the file, return {type: 'updateFile', data: <newArray>}. The returned array MUST contain valid JSON objects.")
+  },
+  async (params) => {
+    try {
+      const resultData = await ndjsonEvalImplementation(params); 
+      
+      let responseText = "";
+      // Check if the implementation indicated a successful file write
+      if (resultData && typeof resultData === 'object' && resultData.success === true) {
+        responseText = `Successfully updated ${resultData.file_path}. Processed ${resultData.lines_processed} lines, wrote ${resultData.lines_written} lines.`;
+      } else {
+        // Otherwise, handle the direct result like mcp_json_eval
+        if (typeof resultData === 'string') {
+            responseText = resultData;
+        } else {
+            try {
+                // Stringify objects/arrays, handle primitives
+                responseText = JSON.stringify(resultData, null, 2);
+            } catch (stringifyError) {
+                responseText = String(resultData ?? "Evaluation produced no stringifiable output.");
+            }
+        }
+      }
+      return { content: [{ type: "text", text: responseText }] };
+
+    } catch (error) {
+      // Ensure the error message is propagated clearly
+      throw new Error(`ndjson Eval Error: ${error.message}`); 
     }
   }
 );
