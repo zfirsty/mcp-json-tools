@@ -1,7 +1,7 @@
 {
   "name": "mcp-json-tools",
-  "version": "1.0.3",
-  "description": "MCP server providing tools to query, inspect, and modify local JSON files.",
+  "version": "1.0.4",
+  "description": "MCP server providing tools to query, inspect, analyze (filter, aggregate, map), and modify local JSON files using JSONPath and Lodash.",
   "main": "index.js",
   "type": "module",
   "bin": {

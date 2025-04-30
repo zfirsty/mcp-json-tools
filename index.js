@@ -182,7 +182,7 @@ async function multiEvalImplementation({ file_paths, js_code }) {
 // Create the MCP server instance
 const server = new McpServer({
   name: "mcp-json-tools",
-  version: "1.0.3",
+  version: "1.0.4",
 });
 
 // Register tools using the SDK
