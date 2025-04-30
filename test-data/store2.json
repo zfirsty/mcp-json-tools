@@ -1,0 +1,21 @@
+{
+  "store": {
+    "book": [
+      {
+        "category": "scifi",
+        "author": "Isaac Asimov",
+        "title": "Foundation",
+        "price": 9.99
+      }, {
+        "category": "fantasy",
+        "author": "Brandon Sanderson",
+        "title": "The Way of Kings",
+        "price": 15.99
+      }
+    ],
+    "bicycle": {
+      "color": "blue",
+      "price": 29.95
+    }
+  }
+}

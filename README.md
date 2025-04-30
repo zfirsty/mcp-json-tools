@@ -70,6 +70,16 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
     *   *Tool Invocation*: Call `mcp_json_eval` with `file_path="test-data/store.json"` and the JavaScript logic above in the `js_code` parameter.
     *   *Expected Output*: `10.99`
 
+### 4. `mcp_json_multi_eval`
+
+*   **Action**: Similar to `mcp_json_eval`, but operates on an array of JSON objects loaded from multiple files. Executes JavaScript code with access to the array of objects (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). **Can modify source files.**
+*   **Parameters**:
+    *   `file_paths` (array of strings): Paths to the JSON files.
+    *   `js_code` (string): JavaScript code to execute.
+*   **File Modification**: To save changes, the *last expression* in `js_code` **must** be `({ type: 'updateMultipleFiles', updates: [{ filePath: '/path/to/file1.json', data: <newData> }, ...] })`. Only files listed in `file_paths` can be updated.
+*   **Returns**: Result of the JavaScript code execution, or a success message listing updated files.
+*   **⚠️ SECURITY WARNING ⚠️**: Same security considerations as `mcp_json_eval` apply.
+
 ## Installation
 
 1.  Requires [Node.js](https://nodejs.org/) (version 18 or higher recommended).
