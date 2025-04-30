@@ -1,6 +1,6 @@
 {
   "name": "mcp-json-tools",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server providing tools to query, inspect, and modify local JSON files.",
   "main": "index.js",
   "type": "module",

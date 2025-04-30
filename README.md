@@ -92,7 +92,7 @@ Configure your client (Cursor, VS Code) to run the server using `npx`. This avoi
 
 **Using NPX (Recommended):**
 
-*   **Important Note on File Paths**: When using the NPX method, the `file_path` or `file_paths` provided to the tools MUST be either **absolute paths** or paths **relative to your workspace root**, NOT relative to the `mcp-json-tools` directory itself. This is because `npx` may run the command from a different working directory.
+*   **Important Note on File Paths**: Based on testing, when using the NPX method, the `file_path` or `file_paths` provided to the tools **MUST be absolute paths**. Relative paths (even those relative to the workspace root) may not resolve correctly due to how `npx` executes commands.
 
 *   **Cursor (`.cursor/mcp.json`):**
     ```json
