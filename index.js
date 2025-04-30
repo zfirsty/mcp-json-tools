@@ -298,7 +298,7 @@ async function ndjsonEvalImplementation({ file_path, js_code }) {
 // Create the MCP server instance
 const server = new McpServer({
   name: "mcp-json-tools",
-  version: "1.0.4",
+  version: "1.0.5",
 });
 
 // Register tools using the SDK
