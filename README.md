@@ -1,13 +1,13 @@
 # MCP JSON Tools
 
-Interact with local JSON files using JSONPath & Lodash & JavaScript evaluation.
-Leverages [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying and [`lodash`](https://lodash.com/docs/) for data manipulation within the `mcp_json_eval` tool.
+Interact with local JSON files using powerful data manipulation via **Lodash** and querying with JSONPath.
+Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying within the `mcp_json_eval` tool.
 
 ## Key Features
 
 *   **Query**: Select data using standard JSONPath expressions.
 *   **Inspect**: Retrieve both values and their precise paths within the JSON structure.
-*   **Analyze & Modify (⚠️)**: Execute JavaScript code with `lodash` and `jsonpath` access for complex data manipulation, analysis, or **in-place file modification**.
+*   **Analyze & Modify with Lodash (⚠️)**: Execute JavaScript code with full **[`lodash`](https://lodash.com/docs/)** (`_`) and `jsonpath` (`jp`) access for complex data transformation, analysis (filtering, mapping, sorting, aggregation, etc.), or **in-place file modification**.
 *   **Simple Setup**: Runs as a standard Node.js process.
 
 ## Tools Provided
@@ -22,10 +22,7 @@ Leverages [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying and 
 *   **Returns**: Array of matching values.
 *   **Example: Get all book authors**
     *   *Goal*: Retrieve the names of all authors.
-    *   *Tool Call*:
-        ```tool_code
-        print(default_api.mcp_jsonTools_mcp_json_query(file_path="test-data/store.json", json_path="$.store.book[*].author"))
-        ```
+    *   *Tool Invocation*: Call `mcp_json_query` with `file_path="test-data/store.json"` and `json_path="$.store.book[*].author"`.
     *   *Expected Output*: `["Nigel Rees", "Evelyn Waugh", "Herman Melville", "J. R. R. Tolkien"]`
 
 ### 2. `mcp_json_nodes`
@@ -38,15 +35,12 @@ Leverages [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying and 
 *   **Returns**: Array of objects `{ path: Array<string|number>, value: any }`.
 *   **Example: Get authors with paths**
     *   *Goal*: Retrieve authors and their locations.
-    *   *Tool Call*:
-        ```tool_code
-        print(default_api.mcp_jsonTools_mcp_json_nodes(file_path="test-data/store.json", json_path="$.store.book[*].author"))
-        ```
+    *   *Tool Invocation*: Call `mcp_json_nodes` with `file_path="test-data/store.json"` and `json_path="$.store.book[*].author"`.
     *   *Expected Output (simplified)*: `[ { path: ['$', 'store', 'book', 0, 'author'], value: 'Nigel Rees' }, ... ]`
 
 ### 3. `mcp_json_eval`
 
-*   **Action**: Executes JavaScript code with access to JSON data (`$1`), `lodash` (`_`), and `jsonpath` (`jp`). **Can modify the source file.**
+*   **Action**: Executes JavaScript code with access to JSON data (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). Leverage the full power of Lodash for sophisticated data processing. **Can modify the source file.**
 *   **Parameters**:
     *   `file_path` (string): Path to the JSON file.
     *   `js_code` (string): JavaScript code to execute.
@@ -63,7 +57,7 @@ Leverages [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying and 
         });
         ({ type: 'updateFile', data: $1 }); // Return update object
         ```
-    *   *Tool Invocation*: Use `mcp_json_eval` with `file_path="test-data/store.json"` and the `js_code` above.
+    *   *Tool Invocation*: Call `mcp_json_eval` with `file_path="test-data/store.json"` and the JavaScript logic above in the `js_code` parameter.
     *   *Expected Output*: `"Successfully updated test-data/store.json"`
 *   **Example: Calculate average price (Analysis - Safe)**
     *   *Goal*: Find the average price of cheap fiction books.
@@ -73,12 +67,12 @@ Leverages [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying and 
         const books = jp.query($1, "$.store.book[?(@.category=='fiction' && @.price < 15)]");
         _.meanBy(books, 'price'); // Return the average price
         ```
-    *   *Tool Invocation*: Use `mcp_json_eval` with `file_path="test-data/store.json"` and the `js_code` above.
+    *   *Tool Invocation*: Call `mcp_json_eval` with `file_path="test-data/store.json"` and the JavaScript logic above in the `js_code` parameter.
     *   *Expected Output*: `10.99`
 
 ## Installation
 
-1.  Requires [Node.js](https://nodejs.org/).
+1.  Requires [Node.js](https://nodejs.org/) (version 18 or higher recommended).
 2.  Clone repository.
 3.  `cd mcp-json-tools`
 4.  `npm install` (Installs `@modelcontextprotocol/sdk`, `jsonpath`, `lodash`, `zod`).
