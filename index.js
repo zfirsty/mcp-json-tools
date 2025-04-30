@@ -71,6 +71,17 @@ async function evalImplementation({ file_path, js_code }) {
     const path = undefined;
     const McpServer = undefined;
     const StdioServerTransport = undefined;
+    const process = undefined; // Critical: Prevent access to process object
+    const setTimeout = undefined;
+    const setInterval = undefined;
+    const setImmediate = undefined;
+    const queueMicrotask = undefined;
+    const fetch = undefined; // Prevent network access (Node 18+)
+    const Buffer = undefined;
+    const WebAssembly = undefined;
+    const require = undefined; // Though likely unavailable in ESM, shadow for safety
+    const global = undefined; // Shadow global namespaces
+    const globalThis = undefined;
     // z (zod) is not relevant/accessible within eval's primary use case
     // _ (lodash) and jp (jsonpath) are intentionally provided
 

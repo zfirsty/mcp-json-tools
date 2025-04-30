@@ -95,7 +95,7 @@ Configure your client (Cursor, VS Code) to run the server. Replace `/path/to/...
     "jsonTools": {
       "description": "Tools to query, inspect, and modify local JSON files.",
       "command": "node",
-      "args": [ "/path/to/.../mcp-json-tools/index.js" ]
+      "args": [ "{ABSOLUTE PATH TO FILE HERE}/mcp-json-tools/index.js" ]
     }
   }
 }
@@ -108,7 +108,7 @@ Configure your client (Cursor, VS Code) to run the server. Replace `/path/to/...
   "jsonTools": {
     "description": "Tools to query, inspect, and modify local JSON files.",
     "command": "node",
-    "args": [ "/path/to/.../mcp-json-tools/index.js" ]
+    "args": [ "{ABSOLUTE PATH TO FILE HERE}/mcp-json-tools/index.js" ]
   }
 }
 ```
