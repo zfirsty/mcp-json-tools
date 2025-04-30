@@ -233,7 +233,7 @@ server.tool(
 
 server.tool(
   "mcp_json_eval",
-  "Execute JavaScript code with the JSON file content ($1), lodash (_), and jsonpath (jp). Can modify the file if code returns {type: 'updateFile', data: {...}}.",
+  "Executes JavaScript code with JSON content ($1), lodash (_), and jsonpath (jp). Returns the result OR modifies the file if the code evaluates to an update instruction.",
   {
     file_path: z.string().describe("The path to the JSON file."),
     js_code: z.string().describe("The JavaScript code to execute.")
@@ -268,7 +268,7 @@ server.tool(
 
 server.tool(
   "mcp_json_multi_eval",
-  "Executes JS code with multiple JSON files ($1 is array of objects), lodash (_), and jsonpath (jp). Can modify source files.",
+  "Executes JS code with multiple JSON files ($1 is array). Returns the result OR modifies files based on an update instruction.",
   {
     file_paths: z.array(z.string()).describe("Array of paths to the JSON files."),
     js_code: z.string().describe("The JavaScript code to execute.")

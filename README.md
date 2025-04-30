@@ -1,5 +1,7 @@
 # MCP JSON Tools
 
+[简体中文](README-CN.md)
+
 Interact with local JSON files using powerful data manipulation via **Lodash** and querying with JSONPath.
 Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`](https://www.npmjs.com/package/jsonpath) for querying within the `mcp_json_eval` tool.
 
@@ -40,12 +42,14 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 
 ### 3. `mcp_json_eval`
 
-*   **Action**: Executes JavaScript code with access to JSON data (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). Leverage the full power of Lodash for sophisticated data processing. **Can modify the source file.**
+*   **Action**: Executes JavaScript code with access to JSON data (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). **Primary purpose**: Return the result of the code's final expression (for analysis/calculation) OR trigger a file write if the result is a specific update instruction. **Can modify the source file.**
 *   **Parameters**:
     *   `file_path` (string): Path to the JSON file.
     *   `js_code` (string): JavaScript code to execute.
-*   **File Modification**: To save changes, the *last expression* in `js_code` **must** be `({ type: 'updateFile', data: <new_json_object> })`.
-*   **Returns**: Result of the JavaScript code execution (stringified if object/array, primitive otherwise), or a success message upon file update.
+*   **File Modification**: To trigger a file write, the *last expression* evaluated in `js_code` **must** be `({ type: 'updateFile', data: <new_json_object> })`.
+*   **Returns**: 
+    *   If the last expression IS NOT the update instruction: The direct result of the `js_code` execution (stringified if object/array, otherwise the primitive value).
+    *   If the last expression IS the update instruction: A success message upon successful file write (e.g., `"Successfully updated ..."`).
 *   **⚠️ SECURITY WARNING ⚠️**: Executes unsandboxed code (`eval()`) with full Node.js permissions. **Use with extreme caution and only with trusted code.**
 *   **Example: Add 'onSale' property (Modifying)**
     *   *Goal*: Add `onSale: false` to every book.
@@ -72,12 +76,14 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
 
 ### 4. `mcp_json_multi_eval`
 
-*   **Action**: Similar to `mcp_json_eval`, but operates on an array of JSON objects loaded from multiple files. Executes JavaScript code with access to the array of objects (`$1`), **Lodash** (`_`), and `jsonpath` (`jp`). **Can modify source files.**
+*   **Action**: Similar to `mcp_json_eval`, but operates on an array of JSON objects (`$1`) loaded from multiple files. **Primary purpose**: Return the result of the code's final expression OR trigger file writes based on a specific update instruction.
 *   **Parameters**:
     *   `file_paths` (array of strings): Paths to the JSON files.
     *   `js_code` (string): JavaScript code to execute.
-*   **File Modification**: To save changes, the *last expression* in `js_code` **must** be `({ type: 'updateMultipleFiles', updates: [{ filePath: '/path/to/file1.json', data: <newData> }, ...] })`. Only files listed in `file_paths` can be updated.
-*   **Returns**: Result of the JavaScript code execution, or a success message listing updated files.
+*   **File Modification**: To trigger file writes, the *last expression* evaluated in `js_code` **must** be `({ type: 'updateMultipleFiles', updates: [{ index: 0, data: <newData> }, ...] })`. Only files corresponding to valid indices in the input `file_paths` can be updated.
+*   **Returns**: 
+    *   If the last expression IS NOT the multi-update instruction: The direct result of the `js_code` execution (stringified if object/array, otherwise the primitive value).
+    *   If the last expression IS the multi-update instruction: A success message listing updated files (e.g., `"Successfully updated files: ..."`).
 *   **⚠️ SECURITY WARNING ⚠️**: Same security considerations as `mcp_json_eval` apply.
 
 ## Installation
