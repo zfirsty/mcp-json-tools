@@ -86,42 +86,47 @@ Leverages [`lodash`](https://lodash.com/docs/) for manipulation and [`jsonpath`]
     *   If the last expression IS the multi-update instruction: A success message listing updated files (e.g., `"Successfully updated files: ..."`).
 *   **⚠️ SECURITY WARNING ⚠️**: Same security considerations as `mcp_json_eval` apply.
 
-## Installation
-
-1.  Requires [Node.js](https://nodejs.org/) (version 18 or higher recommended).
-2.  Clone repository.
-3.  `cd mcp-json-tools`
-4.  `npm install` (Installs `@modelcontextprotocol/sdk`, `jsonpath`, `lodash`, `zod`).
-
 ## Configuration
 
-Configure your client (Cursor, VS Code) to run the server. Replace `/path/to/.../index.js` with the **absolute path** to `index.js` within the `mcp-json-tools` directory.
+Configure your client (Cursor, VS Code) to run the server using `npx`. This avoids needing absolute paths for the *server command itself*.
 
-**Cursor (`.cursor/mcp.json`):**
+**Using NPX (Recommended):**
 
-```json
-{
-  "mcpServers": {
-    "jsonTools": {
-      "description": "Tools to query, inspect, and modify local JSON files.",
-      "command": "node",
-      "args": [ "{ABSOLUTE PATH TO FILE HERE}/mcp-json-tools/index.js" ]
+*   **Important Note on File Paths**: When using the NPX method, the `file_path` or `file_paths` provided to the tools MUST be either **absolute paths** or paths **relative to your workspace root**, NOT relative to the `mcp-json-tools` directory itself. This is because `npx` may run the command from a different working directory.
+
+*   **Cursor (`.cursor/mcp.json`):**
+    ```json
+    {
+      "mcpServers": {
+        "jsonTools": {
+          "description": "Tools to query, inspect, and modify local JSON files.",
+          "command": "npx",
+          "args": [ "mcp-json-tools" ] 
+        }
+      }
     }
-  }
-}
-```
+    ```
+*   **VS Code (`.vscode/mcp.json` or User Settings):**
+    ```json
+    {
+      "jsonTools": {
+        "description": "Tools to query, inspect, and modify local JSON files.",
+        "command": "npx",
+        "args": [ "mcp-json-tools" ] 
+      }
+    }
+    ```
 
-**VS Code (`.vscode/mcp.json` or User Settings):**
+**Alternative: Using Node directly:**
 
-```json
-{
-  "jsonTools": {
-    "description": "Tools to query, inspect, and modify local JSON files.",
-    "command": "node",
-    "args": [ "{ABSOLUTE PATH TO FILE HERE}/mcp-json-tools/index.js" ]
-  }
-}
-```
+This method requires you to specify the **absolute path** to the `mcp-json-tools/index.js` file within the `args` array in your `mcp.json` configuration (e.g., `"command": "node", "args": [ "/abs/path/to/mcp-json-tools/index.js" ]`). It's less portable than the NPX method.
+
+To use this method, you first need the code locally:
+1.  Requires [Node.js](https://nodejs.org/) (version 18 or higher recommended).
+2.  Clone the repository: `git clone https://github.com/zfirsty/mcp-json-tools.git`
+3.  Navigate into the directory: `cd mcp-json-tools`
+4.  Install dependencies: `npm install` (Installs `@modelcontextprotocol/sdk`, `jsonpath`, `lodash`, `zod`).
+Then, configure your client to use the absolute path to the cloned `index.js` file.
 
 ## License
 

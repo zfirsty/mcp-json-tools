@@ -1,9 +1,18 @@
 {
   "name": "mcp-json-tools",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "MCP server providing tools to query, inspect, and modify local JSON files.",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "mcp-json-tools": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md",
+    "README-CN.md",
+    "LICENSE"
+  ],
   "scripts": {
     "start": "node index.js"
   },
@@ -20,6 +29,14 @@
   ],
   "author": "tfm",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zfirsty/mcp-json-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zfirsty/mcp-json-tools/issues"
+  },
+  "homepage": "https://github.com/zfirsty/mcp-json-tools#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
     "jsonpath": "^1.1.1",

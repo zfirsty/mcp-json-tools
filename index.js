@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Main entry point for the MCP JSON Tools server
 
 import fs from 'fs/promises';
@@ -181,15 +182,15 @@ async function multiEvalImplementation({ file_paths, js_code }) {
 // Create the MCP server instance
 const server = new McpServer({
   name: "mcp-json-tools",
-  version: "1.0.0",
+  version: "1.0.2",
 });
 
 // Register tools using the SDK
 server.tool(
   "mcp_json_query",
-  "Execute a JSONPath query on a local JSON file and return values.",
+  "Execute a JSONPath query on a local JSON file and return an array of matching values.",
   {
-    file_path: z.string().describe("The path to the JSON file."),
+    file_path: z.string().describe("The path to the JSON file. Should be an absolute path or relative to the workspace root, especially when running via npx."),
     json_path: z.string().describe("The JSONPath query string."),
     count: z.number().optional().describe("Maximum number of results (optional).")
   },
@@ -210,9 +211,9 @@ server.tool(
 
 server.tool(
   "mcp_json_nodes",
-  "Execute a JSONPath query and return matching nodes with paths.",
+  "Execute a JSONPath query and return matching nodes, including their values and paths in the JSON structure (as { path: Array<string|number>, value: any }).",
   {
-    file_path: z.string().describe("The path to the JSON file."),
+    file_path: z.string().describe("The path to the JSON file. Should be an absolute path or relative to the workspace root, especially when running via npx."),
     json_path: z.string().describe("The JSONPath query string."),
     count: z.number().optional().describe("Maximum number of results (optional).")
   },
@@ -233,10 +234,10 @@ server.tool(
 
 server.tool(
   "mcp_json_eval",
-  "Executes JavaScript code with JSON content ($1), lodash (_), and jsonpath (jp). Returns the result OR modifies the file if the code evaluates to an update instruction.",
+  "Executes JavaScript code with JSON content ($1), lodash (_), and jsonpath (jp). Returns the result OR modifies the file if the code's last expression is an update instruction ({ type: 'updateFile', data: ... }). **WARNING: Executes unsandboxed code.**",
   {
-    file_path: z.string().describe("The path to the JSON file."),
-    js_code: z.string().describe("The JavaScript code to execute.")
+    file_path: z.string().describe("The path to the JSON file. Should be an absolute path or relative to the workspace root, especially when running via npx."),
+    js_code: z.string().describe("The JavaScript code to execute. To modify the file, the last evaluated expression must be `{ type: 'updateFile', data: <new_json_object> }`.")
   },
   async (params) => {
     try {
@@ -268,10 +269,10 @@ server.tool(
 
 server.tool(
   "mcp_json_multi_eval",
-  "Executes JS code with multiple JSON files ($1 is array). Returns the result OR modifies files based on an update instruction.",
+  "Executes JS code with multiple JSON files ($1 is array). Returns the result OR modifies files if the code's last expression is a multi-update instruction ({ type: 'updateMultipleFiles', updates: [...] }). **WARNING: Executes unsandboxed code.**",
   {
-    file_paths: z.array(z.string()).describe("Array of paths to the JSON files."),
-    js_code: z.string().describe("The JavaScript code to execute.")
+    file_paths: z.array(z.string()).describe("Array of paths to the JSON files. Paths should be absolute or relative to the workspace root, especially when running via npx."),
+    js_code: z.string().describe("The JavaScript code to execute. To modify files, the last evaluated expression must be `{ type: 'updateMultipleFiles', updates: [{ index: <file_index>, data: <newData> }, ...] }`.")
   },
   async (params) => {
     try {

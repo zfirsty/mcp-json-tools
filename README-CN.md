@@ -84,42 +84,47 @@
     *   如果最后表达式 **是** 多文件更新指令：列出已更新文件的成功消息（例如 `"Successfully updated files: ..."`）。
 *   **⚠️ 安全警告 ⚠️**: 与 `mcp_json_eval` 具有相同的安全注意事项。
 
-## 安装
-
-1.  需要 [Node.js](https://nodejs.org/) (推荐 v18 或更高版本)。
-2.  克隆仓库。
-3.  `cd mcp-json-tools`
-4.  `npm install` (安装 `@modelcontextprotocol/sdk`, `jsonpath`, `lodash`, `zod`)。
-
 ## 配置
 
-配置你的客户端 (Cursor, VS Code) 来运行此服务器。将 `/path/to/.../index.js` 替换为你系统中 `mcp-json-tools` 目录下 `index.js` 的**绝对路径**。
+配置你的客户端 (Cursor, VS Code) 通过 `npx` 来运行此服务器。这可以避免为*服务器命令本身*处理绝对路径。
 
-**Cursor (`.cursor/mcp.json`):**
+**使用 NPX (推荐):**
 
-```json
-{
-  "mcpServers": {
-    "jsonTools": {
-      "description": "查询、检查和修改本地 JSON 文件的工具集。",
-      "command": "node",
-      "args": [ "{此处替换为绝对路径}/mcp-json-tools/index.js" ]
+*   **关于文件路径的重要提示**: 当使用 NPX 方法时，传递给工具的 `file_path` 或 `file_paths` 参数 **必须** 是**绝对路径**或**相对于你的工作区根目录的路径**，而不是相对于 `mcp-json-tools` 目录本身的路径。这是因为 `npx` 可能在不同的工作目录下运行命令。
+
+*   **Cursor (`.cursor/mcp.json`):**
+    ```json
+    {
+      "mcpServers": {
+        "jsonTools": {
+          "description": "查询、检查和修改本地 JSON 文件的工具集。",
+          "command": "npx",
+          "args": [ "mcp-json-tools" ] 
+        }
+      }
     }
-  }
-}
-```
+    ```
+*   **VS Code (`.vscode/mcp.json` 或用户设置):**
+    ```json
+    {
+      "jsonTools": {
+        "description": "查询、检查和修改本地 JSON 文件的工具集。",
+        "command": "npx",
+        "args": [ "mcp-json-tools" ] 
+      }
+    }
+    ```
 
-**VS Code (`.vscode/mcp.json` 或用户设置):**
+**备选方案：直接使用 Node:**
 
-```json
-{
-  "jsonTools": {
-    "description": "查询、检查和修改本地 JSON 文件的工具集。",
-    "command": "node",
-    "args": [ "{此处替换为绝对路径}/mcp-json-tools/index.js" ]
-  }
-}
-```
+此方法要求你在 `mcp.json` 配置的 `args` 数组中指定 `mcp-json-tools/index.js` 文件的**绝对路径** (例如：`"command": "node", "args": [ "/绝对/路径/到/mcp-json-tools/index.js" ]`)。它的可移植性不如 NPX 方法。
+
+要使用此方法，你首先需要在本地获取代码：
+1.  需要 [Node.js](https://nodejs.org/) (推荐 v18 或更高版本)。
+2.  克隆仓库: `git clone https://github.com/zfirsty/mcp-json-tools.git`
+3.  进入目录: `cd mcp-json-tools`
+4.  安装依赖: `npm install` (安装 `@modelcontextprotocol/sdk`, `jsonpath`, `lodash`, `zod`)。
+然后，配置你的客户端使用克隆下来的 `index.js` 文件的绝对路径。
 
 ## 许可证
 
